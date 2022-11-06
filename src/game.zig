@@ -1,5 +1,7 @@
 const std = @import("std");
 const rl = @import("common.zig").rl;
+const xxhash = @import("smallxxhash.zig").smallxxhash32;
+const perlin = @import("perlin.zig");
 
 var cam = rl.Camera3D{
     .position = .{ .x = 10, .y = 10, .z = 10 },
@@ -8,6 +10,8 @@ var cam = rl.Camera3D{
     .fovy = 45,
     .projection = rl.CAMERA_PERSPECTIVE,
 };
+
+var scale: f32 = 20;
 
 pub fn update() void {
     rl.BeginDrawing();
@@ -18,16 +22,18 @@ pub fn update() void {
     rl.ClearBackground(rl.RAYWHITE);
     rl.BeginMode3D(cam);
     {
-        rl.DrawCube(.{ .x = 0, .y = 0, .z = 0 }, 1, 1, 1, rl.RED);
+        rl.DrawCube(.{
+            .x = perlin.perlin1(@floatCast(f32, rl.GetTime())),
+            .y = 0,
+            .z = perlin.perlin1(@floatCast(f32, rl.GetTime() + 83)),
+        }, 1, 1, 1, rl.RED);
         rl.DrawGrid(10, 1);
     }
     rl.EndMode3D();
-
-    rl.DrawText("YOO", 10, 10, 20, rl.LIGHTGRAY);
 }
 
 pub fn init() void {
-    rl.InitWindow(800, 400, "test");
+    rl.InitWindow(800, 800, "test");
     rl.SetTargetFPS(60);
     rl.SetCameraMode(cam, rl.CAMERA_FREE);
 }
