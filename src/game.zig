@@ -17,7 +17,7 @@ pub fn update() void {
     rl.BeginDrawing();
     defer rl.EndDrawing();
 
-    rl.UpdateCamera(&cam);
+    rl.UpdateCamera(&cam, rl.CAMERA_ORBITAL);
 
     rl.ClearBackground(rl.RAYWHITE);
     rl.BeginMode3D(cam);
@@ -35,7 +35,6 @@ pub fn update() void {
 pub fn init() void {
     rl.InitWindow(800, 800, "test");
     rl.SetTargetFPS(60);
-    rl.SetCameraMode(cam, rl.CAMERA_FREE);
 }
 
 export fn web_update() callconv(.C) void {

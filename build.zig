@@ -1,12 +1,16 @@
 const std = @import("std");
 
-pub fn build(b: *std.build.Builder) !void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
 
-    // build raylib
-    var libraylib = b.addStaticLibrary("raylib", null);
     const is_web_target = target.cpu_arch != null and target.cpu_arch.? == .wasm32;
+
+    const libraylib = b.addStaticLibrary(.{
+        .name = "raylib",
+        .target = target,
+        .optimize = optimize,
+    });
 
     libraylib.addCSourceFile("raylib/src/rcore.c", &.{"-fno-sanitize=undefined"});
     libraylib.addCSourceFile("raylib/src/rshapes.c", &.{"-fno-sanitize=undefined"});
@@ -15,17 +19,12 @@ pub fn build(b: *std.build.Builder) !void {
     libraylib.addCSourceFile("raylib/src/rmodels.c", &.{"-fno-sanitize=undefined"});
     libraylib.addCSourceFile("raylib/src/utils.c", &.{"-fno-sanitize=undefined"});
     libraylib.addCSourceFile("raylib/src/raudio.c", &.{"-fno-sanitize=undefined"});
+
+    libraylib.linkLibC();
     libraylib.addIncludePath("raylib/src");
+    libraylib.addIncludePath("raylib/src/external/glfw/include/");
 
-    libraylib.setTarget(target);
-    libraylib.setBuildMode(mode);
-
-    const libgame = b.addStaticLibrary("game", "src/game.zig");
-    libgame.setBuildMode(mode);
-    libgame.setTarget(target);
-    libgame.addIncludePath("raylib/src");
-
-    if (is_web_target) { // web
+    if (is_web_target) {
         if (b.sysroot == null) {
             @panic("need an emscripten --sysroot (e.g. --sysroot emsdk/upstream/emscripten) when building for web");
         }
@@ -39,6 +38,17 @@ pub fn build(b: *std.build.Builder) !void {
         libraylib.defineCMacro("PLATFORM_WEB", "1");
         libraylib.addIncludePath(em_include_path);
         libraylib.defineCMacro("GRAPHICS_API_OPENGL_ES2", "1");
+        libraylib.stack_protector = false;
+        b.installArtifact(libraylib);
+
+        const libgame = b.addStaticLibrary(.{
+            .name = "game",
+            .root_source_file = .{ .path = "src/game.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        libgame.addIncludePath("raylib/src");
+        b.installArtifact(libgame);
 
         // `source ~/src/emsdk/emsdk_env.sh` first
         const emcc = b.addSystemCommand(&.{
@@ -59,16 +69,14 @@ pub fn build(b: *std.build.Builder) !void {
             "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main']",
         });
 
-        libraylib.install();
-        libgame.install();
-
-        emcc.step.dependOn(&libraylib.install_step.?.step);
-        emcc.step.dependOn(&libgame.install_step.?.step);
+        emcc.step.dependOn(&libraylib.step);
+        emcc.step.dependOn(&libgame.step);
 
         b.getInstallStep().dependOn(&emcc.step);
-    } else { // desktop
+    } else {
         libraylib.defineCMacro("PLATFORM_DESKTOP", "1");
-        libraylib.addCSourceFile("raylib/src/rglfw.c", &.{"-fno-sanitize=undefined"});
+        libraylib.addCSourceFile("raylib/src/rglfw.c", &.{ "-fno-sanitize=undefined", "-D_GNU_SOURCE" });
+
         if (target.isWindows()) {
             libraylib.linkSystemLibrary("opengl32");
             libraylib.linkSystemLibrary("gdi32");
@@ -77,19 +85,25 @@ pub fn build(b: *std.build.Builder) !void {
             libraylib.linkSystemLibrary("pthread");
         }
 
-        libraylib.install();
-        libgame.install();
+        b.installArtifact(libraylib);
 
-        const exe = b.addExecutable("game", "src/main.zig");
-        exe.setTarget(target);
-        exe.setBuildMode(mode);
+        const exe = b.addExecutable(.{
+            .name = "game",
+            .root_source_file = .{ .path = "src/main.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+
         exe.addIncludePath("raylib/src");
+
         exe.linkLibrary(libraylib);
 
-        exe.install();
+        b.installArtifact(exe);
 
-        const run_cmd = exe.run();
+        const run_cmd = b.addRunArtifact(exe);
+
         run_cmd.step.dependOn(b.getInstallStep());
+
         if (b.args) |args| {
             run_cmd.addArgs(args);
         }
@@ -98,12 +112,14 @@ pub fn build(b: *std.build.Builder) !void {
         run_step.dependOn(&run_cmd.step);
     }
 
-    { // unit tests
-        const tests = b.addTest("src/main.zig");
-        tests.setTarget(target);
-        tests.setBuildMode(mode);
+    const unit_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
-        const test_step = b.step("test", "Run unit tests");
-        test_step.dependOn(&tests.step);
-    }
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_unit_tests.step);
 }
