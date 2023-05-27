@@ -43,36 +43,51 @@ pub fn build(b: *std.Build) !void {
 
         const libgame = b.addStaticLibrary(.{
             .name = "game",
-            .root_source_file = .{ .path = "src/game.zig" },
             .target = target,
             .optimize = optimize,
         });
         libgame.addIncludePath("raylib/src");
         b.installArtifact(libgame);
 
-        // `source ~/src/emsdk/emsdk_env.sh` first
-        const emcc = b.addSystemCommand(&.{
-            emcc_path,
-            "entry.c",
-            "-g",
-            "-ogame.html",
-            "-Lzig-out/lib/",
-            "-lgame",
-            "-lraylib",
-            "-sNO_FILESYSTEM=1",
-            "-sLLD_REPORT_UNDEFINED=1",
-            "-sFULL_ES3=1",
-            "-sMALLOC='emmalloc'",
-            "-sASSERTIONS=0",
-            "-sUSE_GLFW=3",
-            "-sSTANDALONE_WASM",
-            "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main']",
-        });
+        { // odin source
+            const odin_compile = b.addSystemCommand(&.{
+                "odin",
+                "build",
+                "src",
+                "-no-entry-point",
+                "-build-mode:obj",
+                "-out:zig-out/odinsrc",
+                "-target=js_wasm32",
+            });
 
-        emcc.step.dependOn(&libraylib.step);
-        emcc.step.dependOn(&libgame.step);
+            libgame.addObjectFile("zig-out/odinsrc.wasm.o");
+            libgame.step.dependOn(&odin_compile.step);
+        }
 
-        b.getInstallStep().dependOn(&emcc.step);
+        { // entrypoint/link
+            // `source ~/src/emsdk/emsdk_env.sh` first
+            const emcc = b.addSystemCommand(&.{
+                emcc_path,
+                "entry.c",
+                "zig-out/odinsrc.wasm.o",
+                "-g",
+                "-ogame.html",
+                "-Lzig-out/lib/",
+                "-lraylib",
+                "-sNO_FILESYSTEM=1",
+                "-sLLD_REPORT_UNDEFINED=1",
+                "-sFULL_ES3=1",
+                "-sMALLOC='emmalloc'",
+                "-sASSERTIONS=0",
+                "-sUSE_GLFW=3",
+                "-sSTANDALONE_WASM",
+                "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main']",
+            });
+
+            emcc.step.dependOn(&libraylib.step);
+            emcc.step.dependOn(&libgame.step);
+            b.getInstallStep().dependOn(&emcc.step);
+        }
     } else {
         libraylib.defineCMacro("PLATFORM_DESKTOP", "1");
         libraylib.addCSourceFile("raylib/src/rglfw.c", &.{ "-fno-sanitize=undefined", "-D_GNU_SOURCE" });
@@ -94,6 +109,20 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         });
 
+        { // odin source
+            const odin_compile = b.addSystemCommand(&.{
+                "odin",
+                "build",
+                "src",
+                "-no-entry-point",
+                "-build-mode:obj",
+                "-out:zig-out/odinsrc",
+            });
+
+            exe.addObjectFile("zig-out/odinsrc.o");
+            exe.step.dependOn(&odin_compile.step);
+        }
+
         exe.addIncludePath("raylib/src");
 
         exe.linkLibrary(libraylib);
@@ -111,15 +140,4 @@ pub fn build(b: *std.Build) !void {
         const run_step = b.step("run", "Run the app");
         run_step.dependOn(&run_cmd.step);
     }
-
-    const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const run_unit_tests = b.addRunArtifact(unit_tests);
-
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_unit_tests.step);
 }

@@ -1,11 +1,13 @@
 const std = @import("std");
 const rl = @import("common.zig").rl;
-const game = @import("game.zig");
+
+extern fn init() callconv(.C) void;
+extern fn update() callconv(.C) void;
 
 pub fn main() !void {
-    game.init();
+    init();
 
     while (!rl.WindowShouldClose()) {
-        game.update();
+        update();
     }
 }
