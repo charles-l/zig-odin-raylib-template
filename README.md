@@ -1,6 +1,8 @@
-# zig-raylib-template
+# zig-odin-raylib-template
 
-A zig template for building games with raylib that compiles to a native exe or an emscripten app.
+**WIP**: not all bindings are available yet, and there are some bugs in the ABI that I have to figure out how to work around.
+
+A zig-build-powered template for building games with odin and raylib that compiles to a native exe or an emscripten app.
 
 To build for desktop:
 
