@@ -116,10 +116,14 @@ pub fn build(b: *std.Build) !void {
                 "src",
                 "-no-entry-point",
                 "-build-mode:obj",
-                "-out:zig-out/odinsrc",
+                "-out:zig-out/odinsrc.o",
             });
 
-            exe.addObjectFile("zig-out/odinsrc.o");
+            if (target.isWindows()) {
+                exe.addObjectFile("zig-out/odinsrc.obj");
+            } else {
+                exe.addObjectFile("zig-out/odinsrc.o");
+            }
             exe.step.dependOn(&odin_compile.step);
         }
 

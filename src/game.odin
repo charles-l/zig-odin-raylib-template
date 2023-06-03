@@ -2,6 +2,9 @@ package main
 import "core:math/linalg"
 import c "core:c"
 
+@export
+_fltused: c.int = 0
+
 Vector3 :: linalg.Vector3f32
 
 // Camera projection
