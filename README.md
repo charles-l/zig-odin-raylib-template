@@ -1,12 +1,11 @@
 # zig-odin-raylib-template
 
-**WIP**: not all bindings are available yet, and there are some bugs in the ABI that I have to figure out how to work around.
-
 A zig-build-powered template for building games with odin and raylib that compiles to a native exe or an emscripten app.
 
-To build for desktop:
+To build for desktop (tested on Linux/Windows):
 
     $ zig build
+    $ zig build -Dtarget=x86_64-windows  # cross-compile to windows
 
 To build for web:
 
@@ -17,7 +16,7 @@ Then navigate to `http://localhost:8000/game.html` in a web browser.
 
 ## versions
 
-TODO: download correct verison of odin and emcc so it doens't have to be
+TODO: download correct version of odin and emcc so it doens't have to be
 externally managed.
 
 ```

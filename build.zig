@@ -1,5 +1,29 @@
 const std = @import("std");
 
+fn makeOdinTargetString(allocator: std.mem.Allocator, target: std.zig.CrossTarget) !?[]const u8 {
+    if (target.cpu_arch == null) {
+        return null;
+    }
+    if (target.cpu_arch.? == .wasm32) {
+        return "freestanding_wasm32";
+    }
+
+    const arch_string = switch (target.cpu_arch.?) {
+        .x86_64 => "amd64",
+        .x86 => "i386",
+        .arm => "arm32",
+        .aarch64 => "arm64",
+        else => @panic("unhandled cpu arch"),
+    };
+
+    return switch (target.os_tag.?) {
+        .windows => try std.fmt.allocPrint(allocator, "windows_{s}", .{arch_string}),
+        .linux => try std.fmt.allocPrint(allocator, "linux_{s}", .{arch_string}),
+        .macos => try std.fmt.allocPrint(allocator, "darwin_{s}", .{arch_string}),
+        else => std.debug.panic("can't build for {}", .{target}),
+    };
+}
+
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -23,6 +47,13 @@ pub fn build(b: *std.Build) !void {
     libraylib.linkLibC();
     libraylib.addIncludePath("raylib/src");
     libraylib.addIncludePath("raylib/src/external/glfw/include/");
+
+    var command: []const []const u8 = &.{ "odin", "build", "src", "-no-entry-point", "-build-mode:obj", "-out:zig-out/odinsrc.o" };
+    if (try makeOdinTargetString(b.allocator, target)) |odin_target_string| {
+        const target_flag = try std.mem.concat(b.allocator, u8, &.{ "-target:", odin_target_string });
+        command = try std.mem.concat(b.allocator, []const u8, &.{ command, &.{target_flag} });
+    }
+    const odin_compile = b.addSystemCommand(command);
 
     if (is_web_target) {
         if (b.sysroot == null) {
@@ -50,16 +81,6 @@ pub fn build(b: *std.Build) !void {
         b.installArtifact(libgame);
 
         { // odin source
-            const odin_compile = b.addSystemCommand(&.{
-                "odin",
-                "build",
-                "src",
-                "-no-entry-point",
-                "-build-mode:obj",
-                "-out:zig-out/odinsrc",
-                "-target=js_wasm32",
-            });
-
             libgame.addObjectFile("zig-out/odinsrc.wasm.o");
             libgame.step.dependOn(&odin_compile.step);
         }
@@ -110,15 +131,6 @@ pub fn build(b: *std.Build) !void {
         });
 
         { // odin source
-            const odin_compile = b.addSystemCommand(&.{
-                "odin",
-                "build",
-                "src",
-                "-no-entry-point",
-                "-build-mode:obj",
-                "-out:zig-out/odinsrc.o",
-            });
-
             if (target.isWindows()) {
                 exe.addObjectFile("zig-out/odinsrc.obj");
             } else {
