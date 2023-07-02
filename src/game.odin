@@ -1,4 +1,5 @@
 package main
+import "core:runtime"
 import rl "raylib"
 import c "core:c"
 
@@ -9,6 +10,12 @@ camera: rl.Camera3D
 
 @export
 init :: proc "c" () {
+    context = runtime.default_context()
+    // needed to setup some runtime type information in odin
+    #force_no_inline runtime._startup_runtime()
+
+    // TODO: figure out how to add hook to call runtime._cleanup_runtime()
+
     using rl
     camera.position = Vector3{3, 3, 3};
     camera.target = Vector3{};
