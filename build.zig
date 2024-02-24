@@ -28,6 +28,11 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const setup_odin = lbl: {
+        break :lbl b.addSystemCommand(&.{ "python3", "build_utils.py", "setup-odin" });
+    };
+    const odin_bin_file = setup_odin.addOutputFileArg("odin");
+
     const is_web_target = target.cpu_arch != null and target.cpu_arch.? == .wasm32;
 
     const libraylib = b.addStaticLibrary(.{
@@ -36,24 +41,30 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    libraylib.addCSourceFile("raylib/src/rcore.c", &.{"-fno-sanitize=undefined"});
-    libraylib.addCSourceFile("raylib/src/rshapes.c", &.{"-fno-sanitize=undefined"});
-    libraylib.addCSourceFile("raylib/src/rtextures.c", &.{"-fno-sanitize=undefined"});
-    libraylib.addCSourceFile("raylib/src/rtext.c", &.{"-fno-sanitize=undefined"});
-    libraylib.addCSourceFile("raylib/src/rmodels.c", &.{"-fno-sanitize=undefined"});
-    libraylib.addCSourceFile("raylib/src/utils.c", &.{"-fno-sanitize=undefined"});
-    libraylib.addCSourceFile("raylib/src/raudio.c", &.{"-fno-sanitize=undefined"});
+    libraylib.addCSourceFiles(&.{
+        "raylib/src/rcore.c",
+        "raylib/src/rshapes.c",
+        "raylib/src/rtextures.c",
+        "raylib/src/rtext.c",
+        "raylib/src/rmodels.c",
+        "raylib/src/utils.c",
+        "raylib/src/raudio.c",
+    }, &.{"-fno-sanitize=undefined"});
 
     libraylib.linkLibC();
-    libraylib.addIncludePath("raylib/src");
-    libraylib.addIncludePath("raylib/src/external/glfw/include/");
+    libraylib.addIncludePath(.{ .path = "raylib/src" });
+    libraylib.addIncludePath(.{ .path = "raylib/src/external/glfw/include/" });
 
-    var command: []const []const u8 = &.{ "odin", "build", "src", "-no-entry-point", "-build-mode:obj", "-out:zig-out/odinsrc.o" };
-    if (try makeOdinTargetString(b.allocator, target)) |odin_target_string| {
-        const target_flag = try std.mem.concat(b.allocator, u8, &.{ "-target:", odin_target_string });
-        command = try std.mem.concat(b.allocator, []const u8, &.{ command, &.{target_flag} });
+    const odin_compile = b.addSystemCommand(&.{"time"});
+    {
+        odin_compile.addFileArg(odin_bin_file);
+        odin_compile.addArgs(&.{ "build", "src", "-no-entry-point", "-build-mode:obj", "-out:zig-out/odinsrc.o" });
+        if (try makeOdinTargetString(b.allocator, target)) |odin_target_string| {
+            const target_flag = try std.mem.concat(b.allocator, u8, &.{ "-target:", odin_target_string });
+            odin_compile.addArg(target_flag);
+        }
+        odin_compile.step.dependOn(&setup_odin.step);
     }
-    const odin_compile = b.addSystemCommand(command);
 
     if (is_web_target) {
         if (b.sysroot == null) {
@@ -67,7 +78,7 @@ pub fn build(b: *std.Build) !void {
         defer b.allocator.free(em_include_path);
 
         libraylib.defineCMacro("PLATFORM_WEB", "1");
-        libraylib.addIncludePath(em_include_path);
+        libraylib.addIncludePath(.{ .path = em_include_path });
         libraylib.defineCMacro("GRAPHICS_API_OPENGL_ES2", "1");
         libraylib.stack_protector = false;
         b.installArtifact(libraylib);
@@ -77,11 +88,11 @@ pub fn build(b: *std.Build) !void {
             .target = target,
             .optimize = optimize,
         });
-        libgame.addIncludePath("raylib/src");
+        libgame.addIncludePath(.{ .path = "raylib/src" });
         b.installArtifact(libgame);
 
         { // odin source
-            libgame.addObjectFile("zig-out/odinsrc.wasm.o");
+            libgame.addObjectFile(.{ .path = "zig-out/odinsrc.wasm.o" });
             libgame.step.dependOn(&odin_compile.step);
         }
 
@@ -111,7 +122,7 @@ pub fn build(b: *std.Build) !void {
         }
     } else {
         libraylib.defineCMacro("PLATFORM_DESKTOP", "1");
-        libraylib.addCSourceFile("raylib/src/rglfw.c", &.{ "-fno-sanitize=undefined", "-D_GNU_SOURCE" });
+        libraylib.addCSourceFiles(&.{"raylib/src/rglfw.c"}, &.{ "-fno-sanitize=undefined", "-D_GNU_SOURCE" });
 
         if (target.isWindows()) {
             libraylib.linkSystemLibrary("opengl32");
@@ -132,14 +143,14 @@ pub fn build(b: *std.Build) !void {
 
         { // odin source
             if (target.isWindows()) {
-                exe.addObjectFile("zig-out/odinsrc.obj");
+                exe.addObjectFile(.{ .path = "zig-out/odinsrc.obj" });
             } else {
-                exe.addObjectFile("zig-out/odinsrc.o");
+                exe.addObjectFile(.{ .path = "zig-out/odinsrc.o" });
             }
             exe.step.dependOn(&odin_compile.step);
         }
 
-        exe.addIncludePath("raylib/src");
+        exe.addIncludePath(.{ .path = "raylib/src" });
 
         exe.linkLibrary(libraylib);
 

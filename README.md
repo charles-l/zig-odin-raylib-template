@@ -4,6 +4,7 @@ A zig-build-powered template for building games with odin and raylib that compil
 
 To build for desktop (tested on Linux/Windows):
 
+    $ git submodule init --update  # only needs to be done on initial clone
     $ zig build
     $ zig build -Dtarget=x86_64-windows  # cross-compile to windows
 
@@ -14,14 +15,13 @@ To build for web:
 
 Then navigate to `http://localhost:8000/game.html` in a web browser.
 
-## versions
+## dependencies/versions
 
-TODO: download correct version of odin and emcc so it doens't have to be
-externally managed.
+Requires `python3` for helper script that downloads and unpacks odin.
+
+TODO: download emcc so it doens't have to be externally managed.
 
 ```
 $ zig version
-0.11.0-dev.3363+9461ed503
-$ odin version
-odin version dev-2023-06-nightly:788f3c22
+0.11.0
 ```

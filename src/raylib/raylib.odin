@@ -85,11 +85,7 @@ import c "core:c"
 import "core:mem"
 //import "core:fmt"
 import "core:strings"
-
-USE_LINALG :: #config(RAYLIB_USE_LINALG, true)
-when USE_LINALG {
-	import "core:math/linalg"
-}
+import "core:math/linalg"
 
 MAX_TEXTFORMAT_BUFFERS :: #config(RAYLIB_MAX_TEXTFORMAT_BUFFERS, 4)
 MAX_TEXT_BUFFER_LENGTH :: #config(RAYLIB_MAX_TEXT_BUFFER_LENGTH, 1024)
@@ -134,6 +130,7 @@ MAGENTA    :: Color{ 255, 0, 255, 255 }     // Magenta
 RAYWHITE   :: Color{ 245, 245, 245, 255 }   // My own White (raylib logo)
 
 
+USE_LINALG :: true
 when USE_LINALG {
 	// Vector2 type
 	Vector2 :: linalg.Vector2f32
@@ -1596,7 +1593,8 @@ MemAllocator :: proc "contextless" () -> mem.Allocator {
 MemAllocatorProc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
                          size, alignment: int,
                          old_memory: rawptr, old_size: int, location := #caller_location) -> (data: []byte, err: mem.Allocator_Error)  {
-	switch mode {
+
+	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed:
 		ptr := MemAlloc(c.uint(size))
 		if ptr == nil {
