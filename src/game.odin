@@ -45,11 +45,17 @@ init :: proc "c" () {
     camera.projection = .PERSPECTIVE;
     InitWindow(600, 600, "test")
     SetTargetFPS(60);
+
+    t := tween(&pos, rl.Vector3{0, 0, 0}, 3)
+    t.ease_proc = ease_out_elastic
+    tween(&color, rl.Color{255, 255, 0, 255}, 3)
 }
 
 @export
 update :: proc "c" () {
     using rl
+    context = runtime.default_context()
+    update_tween(rl.GetFrameTime())
     BeginDrawing();
     defer EndDrawing();
 

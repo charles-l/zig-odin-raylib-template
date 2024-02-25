@@ -138,6 +138,7 @@ when USE_LINALG {
 	Vector3 :: linalg.Vector3f32
 	// Vector4 type
 	Vector4 :: linalg.Vector4f32
+	Color :: distinct [4]u8
 
 	// Quaternion type
 	Quaternion :: linalg.Quaternionf32
@@ -162,14 +163,6 @@ when USE_LINALG {
 		m2, m6, m10, m14: f32, // Matrix third row (4 components)
 		m3, m7, m11, m15: f32, // Matrix fourth row (4 components)
 	}
-}
-
-// Color, 4 components, R8G8B8A8 (32bit)
-Color :: struct {
-	r: u8,                        // Color red value
-	g: u8,                        // Color green value
-	b: u8,                        // Color blue value
-	a: u8,                        // Color alpha value
 }
 
 // Rectangle type
