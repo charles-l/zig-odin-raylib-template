@@ -114,6 +114,7 @@ pub fn build(b: *std.Build) !void {
                 "-sUSE_GLFW=3",
                 "-sSTANDALONE_WASM",
                 "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main']",
+                "-sTOTAL_MEMORY=21299200",
             });
 
             emcc.step.dependOn(&libraylib.step);
