@@ -3,6 +3,7 @@ const rl = @import("common.zig").rl;
 
 extern fn init() callconv(.C) void;
 extern fn update() callconv(.C) void;
+extern fn cleanup() callconv(.C) void;
 
 pub fn main() !void {
     init();
@@ -10,4 +11,6 @@ pub fn main() !void {
     while (!rl.WindowShouldClose()) {
         update();
     }
+
+    cleanup();
 }

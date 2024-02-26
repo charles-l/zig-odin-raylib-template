@@ -9,12 +9,16 @@ IS_WASM :: ODIN_ARCH == .wasm32 || ODIN_ARCH == .wasm64p32
 @export
 _fltused: c.int = 0
 
-tempData: [mem.Megabyte * 4]byte
-mainData: [mem.Megabyte * 16]byte
+mainArena: mem.Arena
+mainData: [mem.Megabyte * 20]byte
+temp_allocator: mem.Scratch_Allocator
 
 camera: rl.Camera3D
 pos := rl.Vector3{0, 10, 0}
 color := rl.RED
+sp: Spring
+
+ctx: runtime.Context
 
 @export
 init :: proc "c" () {
@@ -23,20 +27,18 @@ init :: proc "c" () {
     // needed to setup some runtime type information in odin
     #force_no_inline runtime._startup_runtime()
 
-    // TODO: figure out how to add hook to call runtime._cleanup_runtime()
-
     when IS_WASM {
-        mainArena: mem.Arena
         mem.arena_init(&mainArena, mainData[:])
-
-        tempArena: mem.Arena
-        mem.arena_init(&tempArena, tempData[:])
-
         context.allocator = mem.arena_allocator(&mainArena)
-        context.temp_allocator = mem.arena_allocator(&tempArena)
+
+        mem.scratch_allocator_init(&temp_allocator, mem.Megabyte * 2)
+        context.temp_allocator = mem.scratch_allocator(&temp_allocator)
+
         TraceLog(rl.TraceLogLevel.INFO, "Setup hardcoded arena allocators")
     }
+    ctx = context
 
+	init_ecs()
 
     camera.position = Vector3{3, 3, 3};
     camera.target = Vector3{};
@@ -49,25 +51,50 @@ init :: proc "c" () {
     t := tween(&pos, rl.Vector3{0, 0, 0}, 3)
     t.ease_proc = ease_out_elastic
     tween(&color, rl.Color{255, 255, 0, 255}, 3)
+
+    sp = make_spring(2, 0.5, 0, 0)
+
+    for i in 0..<10 {
+        cube := create_entity()
+        transform := add_component(Transform, cube)
+        transform.translation.x = f32(i) * 3
+    }
+}
+import "core:fmt"
+
+@export
+cleanup :: proc "c" () {
+    context = ctx
+    fmt.tprint("HI")
+    free_ecs()
+    rl.CloseWindow()
+    #force_no_inline runtime._cleanup_runtime()
 }
 
 @export
 update :: proc "c" () {
     using rl
-    context = runtime.default_context()
+    context = ctx
     update_tween(rl.GetFrameTime())
-    BeginDrawing();
-    defer EndDrawing();
+    BeginDrawing()
+    defer EndDrawing()
 
-    UpdateCamera(&camera, .ORBITAL);
+    UpdateCamera(&camera, .ORBITAL)
 
-    ClearBackground(GRAY);
-    BeginMode3D(camera);
+    ClearBackground(GRAY)
+    BeginMode3D(camera)
     {
-        DrawCube(pos, 1, 1, 1, color);
+        view := make_scene_view(Transform)
+		for e in iterate_scene_view(&view) {
+            DrawCube(get_component(Transform, e)^.translation, 1, 1, 1, color);
+		}
+        DrawCube(Vector3{update_spring(&sp, rl.GetMousePosition().x, rl.GetFrameTime()), 2, 0}, 1, 1, 1, rl.GREEN)
+
         DrawGrid(10, 1);
     }
-    EndMode3D();
+    EndMode3D()
+
+    free_all(context.temp_allocator)
 }
 
 
