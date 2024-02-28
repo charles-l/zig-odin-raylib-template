@@ -55,7 +55,6 @@ Tweener :: struct {
     queued_tween: ^Tweener,
 }
 
-tweeners: [dynamic]^Tweener;
 updating_tweens: bool;
 
 Tween_Params :: struct {
@@ -63,21 +62,15 @@ Tween_Params :: struct {
     callback: proc(rawptr),
 }
 
-tween_destroy :: proc(ptr: rawptr) {
-    for _, i in tweeners {
-        tweener := tweeners[i];
-        if tweeners[i].addr == ptr {
-            tween_destroy_index(i);
-            break;
-        }
-    }
-}
-
-tween_destroy_index :: proc(idx: int) {
-    tweener := tweeners[idx];
-    unordered_remove(&tweeners, idx);
-    free(tweener);
-}
+//tween_destroy :: proc(ptr: rawptr) {
+//    for _, i in tweeners {
+//        tweener := tweeners[i];
+//        if tweeners[i].addr == ptr {
+//            tween_destroy_index(i);
+//            break;
+//        }
+//    }
+//}
 
 tween :: proc(ptr: ^$T, target: T, duration: f32, ease: proc(f32) -> f32 = ease_out_quart, delay : f32 = 0) -> ^Tweener {
     assert(!updating_tweens);
@@ -90,7 +83,7 @@ tween :: proc(ptr: ^$T, target: T, duration: f32, ease: proc(f32) -> f32 = ease_
 
 tween_make :: proc(ptr: ^$T, target: T, duration: f32, ease: proc(f32) -> f32 = ease_out_quart, delay : f32 = 0) -> ^Tweener {
     new_tweener := new_clone(Tweener{ptr, ptr, ptr^, target, 0, duration, ease, f32(rl.GetTime()), false, nil, nil, nil}); // @Alloc
-    append(&tweeners, new_tweener);
+    //append(&tweeners, new_tweener);
     return new_tweener;
 }
 
@@ -104,7 +97,7 @@ tween_queue :: proc(a, b: ^Tweener) {
     a.queued_tween = b;
 }
 
-update_tween :: proc(dt: f32) {
+update_tweeners :: proc(tweeners: ^[dynamic]^Tweener, dt: f32) {
     tweener_idx := len(tweeners)-1;
     updating_tweens = true;
     defer updating_tweens = false;
@@ -149,7 +142,10 @@ update_tween :: proc(dt: f32) {
                 }
                 tweener.queued_tween.start_time = f32(rl.GetTime())
             }
-            tween_destroy_index(tweener_idx)
+
+            // destroy
+            unordered_remove(tweeners, tweener_idx)
+            free(tweener)
         }
     }
 }

@@ -91,19 +91,25 @@ update :: proc "c" () {
     using rl
     context = ctx
     defer free_all(context.temp_allocator)
-    update_tween(rl.GetFrameTime())
     BeginDrawing()
     defer EndDrawing()
 
     UpdateCamera(&camera, .ORBITAL)
 
+    { // tween system
+        view := make_scene_view(Tweens)
+        for e in iterate_scene_view(&view) {
+            update_tweeners(&get_component(Tweens, e)^.tweeners, rl.GetFrameTime());
+        }
+    }
+
     ClearBackground(GRAY)
     BeginMode3D(camera)
     {
         view := make_scene_view(Transform)
-		for e in iterate_scene_view(&view) {
+        for e in iterate_scene_view(&view) {
             DrawCube(get_component(Transform, e)^.translation, 1, 1, 1, color);
-		}
+        }
         DrawCube(Vector3{update_spring(&sp, rl.GetMousePosition().x, rl.GetFrameTime()), 2, 0}, 1, 1, 1, rl.GREEN)
 
         DrawGrid(10, 1);
