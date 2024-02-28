@@ -1,3 +1,4 @@
+// ecs based on https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
 package main
 import "core:math/linalg"
 import "core:mem"
@@ -5,10 +6,14 @@ import "raylib"
 Vector3 :: raylib.Vector3
 Quaternion :: raylib.Quaternion
 Transform :: raylib.Transform
-// ecs based on https://www.david-colson.com/2020/02/09/making-a-simple-ecs.html
+
+Tweens :: struct {
+    tweeners: [dynamic]^Tweener
+}
 
 all_components := []typeid {
     Transform,
+    Tweens,
 }
 
 component_id_map: map[typeid]int

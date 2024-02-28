@@ -1,5 +1,6 @@
 *.wasm
 *.html
 *.js
+*.data
 zig-cache/
 zig-out/

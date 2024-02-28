@@ -106,15 +106,15 @@ pub fn build(b: *std.Build) !void {
                 "-ogame.html",
                 "-Lzig-out/lib/",
                 "-lraylib",
-                "-sNO_FILESYSTEM=1",
                 "-sLLD_REPORT_UNDEFINED=1",
-                "-sFULL_ES3=1",
-                "-sMALLOC='emmalloc'",
-                "-sASSERTIONS=0",
+                "-DPLATFORM_WEB",
+                //"-sFULL_ES3=1",
+                //"-sMALLOC='emmalloc'",
+                "-sALLOW_MEMORY_GROWTH",
                 "-sUSE_GLFW=3",
-                "-sSTANDALONE_WASM",
-                "-sEXPORTED_FUNCTIONS=['_malloc','_free','_main']",
+                //"-sEXPORTED_FUNCTIONS=['_malloc','_free','_main']",
                 "-sTOTAL_MEMORY=21299200",
+                "--preload-file=resources",
             });
 
             emcc.step.dependOn(&libraylib.step);

@@ -3,6 +3,7 @@ import "core:runtime"
 import rl "raylib"
 import c "core:c"
 import "core:mem"
+import "core:strings"
 
 IS_WASM :: ODIN_ARCH == .wasm32 || ODIN_ARCH == .wasm64p32
 
@@ -19,6 +20,8 @@ color := rl.RED
 sp: Spring
 
 ctx: runtime.Context
+
+font: rl.Font
 
 @export
 init :: proc "c" () {
@@ -57,24 +60,37 @@ init :: proc "c" () {
     for i in 0..<10 {
         cube := create_entity()
         transform := add_component(Transform, cube)
+        tweens := add_component(Tweens, cube)
         transform.translation.x = f32(i) * 3
+        append(&tweens.tweeners, tween(&transform.translation.y, 3, f32(i+1) * 10))
     }
+
+    font = rl.LoadFont("resources/mago3.ttf")
 }
-import "core:fmt"
 
 @export
 cleanup :: proc "c" () {
     context = ctx
-    fmt.tprint("HI")
     free_ecs()
     rl.CloseWindow()
     #force_no_inline runtime._cleanup_runtime()
 }
 
+draw_text :: proc (s: string, pos: rl.Vector2) {
+    cstr, err := strings.clone_to_cstring(s, allocator=context.temp_allocator)
+    if err != nil {
+        panic("can't alloc string")
+    }
+
+    rl.DrawTextEx(font, cstr, pos, 26, 1, rl.WHITE)
+}
+
+i := 0
 @export
 update :: proc "c" () {
     using rl
     context = ctx
+    defer free_all(context.temp_allocator)
     update_tween(rl.GetFrameTime())
     BeginDrawing()
     defer EndDrawing()
@@ -94,7 +110,7 @@ update :: proc "c" () {
     }
     EndMode3D()
 
-    free_all(context.temp_allocator)
+    draw_text("HI!", rl.Vector2{10, 10})
 }
 
 
